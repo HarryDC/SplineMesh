@@ -35,7 +35,7 @@ namespace SplineMesh {
         [FormerlySerializedAs("curves")]
         [SerializeField]
         private List<CubicBezierCurve> _curves;
-
+        
         /// <summary>
         /// The spline length in world units.
         /// </summary>
@@ -58,7 +58,7 @@ namespace SplineMesh {
         }
 
         public float Length => _length;
-
+        
         public IReadOnlyList<SplineNode> Nodes => _nodes;
 
         public IReadOnlyList<CubicBezierCurve> Curves => _curves;
@@ -96,7 +96,7 @@ namespace SplineMesh {
             Changed?.Invoke();
         }
         
-        private void SetDirty() {
+        public void SetDirty() {
             if (_computeCoroutine != null) return;
             _computeCoroutine = StartCoroutine(ComputeCurves());
         }

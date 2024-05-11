@@ -87,10 +87,12 @@ namespace SplineMesh {
         [FormerlySerializedAs("n1")]
         [SerializeField]
         private SplineNode _node1;
+        public SplineNode Node1 => _node1;
         [FormerlySerializedAs("n2")]
         [SerializeField]
         private SplineNode _node2;
-
+        public SplineNode Node2 => _node2;
+        
         private bool _isDirty;
         private float _length;
 
