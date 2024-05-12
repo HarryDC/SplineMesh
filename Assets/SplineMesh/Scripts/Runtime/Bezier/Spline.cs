@@ -96,7 +96,7 @@ namespace SplineMesh {
             Changed?.Invoke();
         }
         
-        public void SetDirty() {
+        private void SetDirty() {
             if (_computeCoroutine != null) return;
             _computeCoroutine = StartCoroutine(ComputeCurves());
         }
