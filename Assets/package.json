@@ -1,0 +1,18 @@
+{
+  "name": "com.hscheirich.splinemesh",
+  "version": "2.0.1",
+  "displayName": "Spline Mesh",
+  "description": "Based work by ben.oeilnoir@gmail.com and alexeyev.anton@gmail.com",
+  "unity": "2022",
+  "unityRelease": "0",
+  "dependencies": { },
+ "keywords": [
+    "spline",
+    "extrusion",
+  ],
+  "author": {
+    "name": "Unity",
+    "email": "unity@example.com",
+    "url": "https://www.unity3d.com"
+  }
+}

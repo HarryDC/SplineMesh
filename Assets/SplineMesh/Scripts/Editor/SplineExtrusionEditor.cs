@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEditor;
 
 namespace SplineMesh {
@@ -16,6 +17,8 @@ namespace SplineMesh {
         private SplineExtrusion se;
         private ExtrusionSegment.Vertex selection = null;
 
+        private static Dictionary<Color, Texture2D> _textureCache = new();
+
         private void OnEnable() {
             se = (SplineExtrusion)target;
             textureScale = serializedObject.FindProperty("textureScale");
@@ -29,7 +32,7 @@ namespace SplineMesh {
             if (e.type == EventType.MouseDown) {
                 Undo.RegisterCompleteObjectUndo(se, "change extruded shape");
                 // if control key pressed, we will have to create a new vertex if position is changed
-                if (e.alt) {
+                if (e.control) {
                     mustCreateNewNode = true;
                 }
             }
@@ -48,49 +51,7 @@ namespace SplineMesh {
                 // first we check if at least one thing is in the camera field of view
                 if (!CameraUtility.IsOnScreen(point) && !CameraUtility.IsOnScreen(normal)) continue;
 
-                if (v == selection) {
-                    // draw the handles for selected vertex position and normal
-                    float size = HandleUtility.GetHandleSize(point) * 0.3f;
-                    float snap = 0.1f;
-
-                    // create a handle for the vertex position
-                    Vector3 movedPoint = Handles.Slider2D(0, point, startSample.Tangent, Vector3.right, Vector3.up, size, Handles.CircleHandleCap, new Vector2(snap, snap));
-                    if (movedPoint != point) {
-                        // position has been moved
-                        Vector2 newVertexPoint = Quaternion.Inverse(q) * (se.transform.InverseTransformPoint(movedPoint) - (Vector3)startSample.Location);
-                        if (mustCreateNewNode) {
-                            // We must create a new node
-                            mustCreateNewNode = false;
-                            ExtrusionSegment.Vertex newVertex = new ExtrusionSegment.Vertex(newVertexPoint, v.normal, v.uCoord);
-                            int i = se.shapeVertices.IndexOf(v);
-                            if (i == se.shapeVertices.Count - 1) {
-                                se.shapeVertices.Add(newVertex);
-                            } else {
-                                se.shapeVertices.Insert(i + 1, newVertex);
-                            }
-                            selection = newVertex;
-                        } else {
-                            v.point = newVertexPoint;
-                            // normal must be updated if point has been moved
-                            normal = se.transform.TransformPoint(q * (v.point + v.normal) + (Vector3)startSample.Location);
-                        }
-                        se.SetToUpdate();
-                    } else {
-                        // vertex position handle hasn't been moved
-                        // create a handle for normal
-                        Vector3 movedNormal = Handles.Slider2D(normal, startSample.Tangent, Vector3.right, Vector3.up, size, Handles.CircleHandleCap, snap);
-                        if (movedNormal != normal) {
-                            // normal has been moved
-                            v.normal = (Vector2)(Quaternion.Inverse(q) * (se.transform.InverseTransformPoint(movedNormal) - (Vector3)startSample.Location)) - v.point;
-                            se.SetToUpdate();
-                        }
-                    }
-
-                    Handles.BeginGUI();
-                    DrawQuad(HandleUtility.WorldToGUIPoint(point), CURVE_COLOR);
-                    DrawQuad(HandleUtility.WorldToGUIPoint(normal), Color.red);
-                    Handles.EndGUI();
-                } else {
+                if (v != selection) {
                     // we draw a button to allow selection of the vertex
                     Handles.BeginGUI();
                     Vector2 p = HandleUtility.WorldToGUIPoint(point);
@@ -112,12 +73,87 @@ namespace SplineMesh {
                 Vector3 vAtSplineEnd = se.transform.TransformPoint(q * next.point + (Vector3)startSample.Location);
                 Handles.DrawLine(point, vAtSplineEnd);
             }
+
+            if (selection != null) {
+                Vector3 point = se.transform.TransformPoint(q * selection.point + (Vector3)startSample.Location);
+                Vector3 normal =
+                    se.transform.TransformPoint(
+                        q * (selection.point + selection.normal) + (Vector3)startSample.Location);
+
+                // draw the handles for selected vertex position and normal
+                float size = HandleUtility.GetHandleSize(point) * 0.3f;
+                float snap = 0.1f;
+
+                // create a handle for the vertex position
+                Vector3 movedPoint = Handles.Slider2D(0, point, startSample.Tangent, Vector3.right, Vector3.up, size,
+                    Handles.CircleHandleCap, new Vector2(snap, snap));
+                if (movedPoint != point)
+                {
+                    // position has been moved
+                    Vector2 newVertexPoint = Quaternion.Inverse(q) *
+                                             (se.transform.InverseTransformPoint(movedPoint) -
+                                              (Vector3)startSample.Location);
+                    if (mustCreateNewNode)
+                    {
+                        // We must create a new node
+                        mustCreateNewNode = false;
+                        ExtrusionSegment.Vertex newVertex =
+                            new ExtrusionSegment.Vertex(newVertexPoint, selection.normal, selection.uCoord);
+                        int i = se.shapeVertices.IndexOf(selection);
+                        if (i == se.shapeVertices.Count - 1)
+                        {
+                            se.shapeVertices.Add(newVertex);
+                        }
+                        else
+                        {
+                            se.shapeVertices.Insert(i + 1, newVertex);
+                        }
+
+                        selection = newVertex;
+                    }
+                    else
+                    {
+                        selection.point = newVertexPoint;
+                        // normal must be updated if point has been moved
+                        normal = se.transform.TransformPoint(q * (selection.point + selection.normal) +
+                                                             (Vector3)startSample.Location);
+                    }
+
+                    se.SetToUpdate();
+                }
+                else
+                {
+                    // vertex position handle hasn't been moved
+                    // create a handle for normal
+                    Vector3 movedNormal = Handles.Slider2D(normal, startSample.Tangent, Vector3.right, Vector3.up, size,
+                        Handles.CircleHandleCap, snap);
+                    if (movedNormal != normal)
+                    {
+                        // normal has been moved
+                        selection.normal =
+                            (Vector2)(Quaternion.Inverse(q) * (se.transform.InverseTransformPoint(movedNormal) -
+                                                               (Vector3)startSample.Location)) - selection.point;
+                        se.SetToUpdate();
+                    }
+                }
+
+                Handles.BeginGUI();
+                DrawQuad(HandleUtility.WorldToGUIPoint(point), CURVE_COLOR);
+                DrawQuad(HandleUtility.WorldToGUIPoint(normal), Color.red);
+                Handles.EndGUI();
+            }
         }
 
-        void DrawQuad(Rect rect, Color color) {
-            Texture2D texture = new Texture2D(1, 1);
-            texture.SetPixel(0, 0, color);
-            texture.Apply();
+        void DrawQuad(Rect rect, Color color)
+        {
+            Texture2D texture;
+            if (!_textureCache.TryGetValue(color, out texture))
+            {
+                texture = new Texture2D(1, 1);
+                texture.SetPixel(0, 0, color);
+                texture.Apply();
+                _textureCache[color] = texture;
+            }
             GUI.skin.box.normal.background = texture;
             GUI.Box(rect, GUIContent.none);
         }
@@ -129,7 +165,7 @@ namespace SplineMesh {
         public override void OnInspectorGUI() {
             serializedObject.Update();
             // Add vertex hint
-            EditorGUILayout.HelpBox("Hold Alt and drag a vertex to create a new one.", MessageType.Info);
+            EditorGUILayout.HelpBox("Hold Ctrl and drag a vertex to create a new one.", MessageType.Info);
 
             // Delete vertex button
             if (selection == null || se.shapeVertices.Count <= 3) {

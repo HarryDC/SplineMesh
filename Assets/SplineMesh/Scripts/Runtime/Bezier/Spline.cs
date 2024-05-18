@@ -27,14 +27,17 @@ namespace SplineMesh {
         /// </summary>
         [FormerlySerializedAs("nodes")]
         [SerializeField]
-        private List<SplineNode> _nodes;
+        private List<SplineNode> _nodes = new List<SplineNode>(){
+            new SplineNode(new Vector3(5, 0, 0), new Vector3(5, 0, -3)),
+            new SplineNode(new Vector3(10, 0, 0), new Vector3(10, 0, 3))
+        };
 
         /// <summary>
         /// The generated curves. Should not be changed in any way, use nodes instead.
         /// </summary>
         [FormerlySerializedAs("curves")]
         [SerializeField]
-        private List<CubicBezierCurve> _curves;
+        private List<CubicBezierCurve> _curves = new List<CubicBezierCurve>();
         
         /// <summary>
         /// The spline length in world units.
